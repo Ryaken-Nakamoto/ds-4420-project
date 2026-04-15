@@ -1,0 +1,104 @@
+---
+title: "Bayesian Regression"
+output: pdf_document
+---
+
+```{r setup}
+library(geoR)
+library(mvnfast)
+library(MCMCpack)
+library(brms)
+```
+
+## loading data
+
+```{r load data}
+X_train <- read.csv("train-test/X_train.csv")
+X_test <- read.csv("train-test/X_test.csv")
+y_train <- read.csv("train-test/y_train.csv")
+y_test <- read.csv("train-test/y_test.csv")
+
+train_df <- cbind(X_train, POINT_DIFF = y_train$POINT_DIFF)
+test_df <- cbind(X_test, POINT_DIFF = y_test$POINT_DIFF)
+
+cat("Training rows:", nrow(train_df), "\n")
+cat("Test rows:", nrow(test_df),  "\n")
+```
+
+## fitting model
+```{r fit model}
+# note the "." means all other columns
+
+# TODO: experiment with different priors
+prior <- default_prior(POINT_DIFF ~ .,
+                       data = train_df,
+                       family = gaussian())
+
+fit <- brm(POINT_DIFF ~ .,
+           family = gaussian(),
+           data = train_df,
+           chains = 4,
+           iter = 1000,
+           warmup = 180,
+           thin = 2,
+           prior = prior)
+
+```
+
+```{r summary}
+summary(fit)
+```
+
+### chain trace plots/marginal posteriors for the 12 rolling features
+
+```{r convergence plot, fig.height=18}
+
+rolling_vars <- c(
+  "b_PTS_roll10_home", "b_FG_PCT_roll10_home",
+  "b_FT_PCT_roll10_home", "b_FG3_PCT_roll10_home",
+  "b_AST_roll10_home",  "b_REB_roll10_home",
+  "b_PTS_roll10_away",  "b_FG_PCT_roll10_away",
+  "b_FT_PCT_roll10_away", "b_FG3_PCT_roll10_away",
+  "b_AST_roll10_away",  "b_REB_roll10_away"
+)
+
+plot(fit, variable = rolling_vars)
+```
+```{r posterior-hist, fig.height=8}
+mcmc_plot(fit, variable = rolling_vars, type = "hist")
+```
+```{r posterior-sigma}
+# TODO: how do I interepret this STD?
+mcmc_plot(fit, variable = "sigma", type = "hist")
+```
+
+## evals
+
+```{r r2}
+bayes_R2(fit)
+```
+
+```{r coverage}
+post_preds <- posterior_predict(fit, newdata = test_df)
+
+lower <- apply(post_preds, 2, quantile, probs = 0.025)
+upper <- apply(post_preds, 2, quantile, probs = 0.975)
+
+coverage <- mean(test_df$POINT_DIFF >= lower & test_df$POINT_DIFF <= upper)
+cat(sprintf("95%% posterior predictive interval coverage on test set: %.1f%%\n", coverage*100))
+```
+
+```{r pred vs actual}
+pred_mean <- colMeans(post_preds)
+
+residuals <- test_df$POINT_DIFF - pred_mean
+
+plot(seq_along(residuals), residuals,
+     xlab = "Index",
+     ylab = "Residual",
+     main = "Residuals")
+abline(h = 0, col = "red", lwd = 2)
+
+mse <- mean((pred_mean - test_df$POINT_DIFF)^2)
+cat("MSE (for comparison with the MLP):", mse)
+```

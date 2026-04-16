@@ -13,8 +13,8 @@ library(brms)
 ## loading data
 
 ```{r load data}
-X_train <- read.csv("train-test/X_train.csv")
-X_test <- read.csv("train-test/X_test.csv")
+X_train <- read.csv("train-test/X_train_diff.csv")
+X_test <- read.csv("train-test/X_test_diff.csv")
 y_train <- read.csv("train-test/y_train.csv")
 y_test <- read.csv("train-test/y_test.csv")
 
@@ -29,10 +29,15 @@ cat("Test rows:", nrow(test_df),  "\n")
 ```{r fit model}
 # note the "." means all other columns
 
-# TODO: experiment with different priors
-prior <- default_prior(POINT_DIFF ~ .,
+=prior <- default_prior(POINT_DIFF ~ .,
                        data = train_df,
                        family = gaussian())
+
+manual_prior <- c(
+  prior(student_t(3, 0, 5), class = "Intercept"),
+  prior(student_t(3, 0, 5), class = "sigma"),
+  prior(normal(0, 1), class = "b")
+)
 
 fit <- brm(POINT_DIFF ~ .,
            family = gaussian(),
@@ -41,7 +46,7 @@ fit <- brm(POINT_DIFF ~ .,
            iter = 1000,
            warmup = 180,
            thin = 2,
-           prior = prior)
+           prior = manual_prior)
 
 ```
 
@@ -54,21 +59,26 @@ summary(fit)
 ```{r convergence plot, fig.height=18}
 
 rolling_vars <- c(
-  "b_PTS_roll10_home", "b_FG_PCT_roll10_home",
-  "b_FT_PCT_roll10_home", "b_FG3_PCT_roll10_home",
-  "b_AST_roll10_home",  "b_REB_roll10_home",
-  "b_PTS_roll10_away",  "b_FG_PCT_roll10_away",
-  "b_FT_PCT_roll10_away", "b_FG3_PCT_roll10_away",
-  "b_AST_roll10_away",  "b_REB_roll10_away"
+  "b_PTS_roll10_diff",
+  "b_FG_PCT_roll10_diff",
+  "b_FT_PCT_roll10_diff",
+  "b_FG3_PCT_roll10_diff",
+  "b_AST_roll10_diff",
+  "b_REB_roll10_diff"
 )
 
 plot(fit, variable = rolling_vars)
 ```
+
 ```{r posterior-hist, fig.height=8}
 mcmc_plot(fit, variable = rolling_vars, type = "hist")
 ```
+
+```{r posterior-acf, fig.height=8}
+mcmc_plot(fit, variable = rolling_vars, type = "acf")
+```
+
 ```{r posterior-sigma}
-# TODO: how do I interepret this STD?
 mcmc_plot(fit, variable = "sigma", type = "hist")
 ```
 
@@ -85,6 +95,7 @@ lower <- apply(post_preds, 2, quantile, probs = 0.025)
 upper <- apply(post_preds, 2, quantile, probs = 0.975)
 
 coverage <- mean(test_df$POINT_DIFF >= lower & test_df$POINT_DIFF <= upper)
+# too much variability, need more informatble priors, so rn inf variants on the weights.
 cat(sprintf("95%% posterior predictive interval coverage on test set: %.1f%%\n", coverage*100))
 ```
 

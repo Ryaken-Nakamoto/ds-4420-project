@@ -22,7 +22,7 @@ We employ two different models to predict point differentials. A Bayesian Linear
 * The Bayesian Linear Regression model implementation and results are located in `bayesian.Rmd`.
 * The Multilayer Perceptron (MLP) model implementation and results are located in `nba_mlp.ipynb`.
 * The data cleaning and preprocessing pipeline is located in `cleaning_data.ipynb`.
-* The cleaned dataset is located in `games.csv`.
+* The cleaned dataset without the differentials is located in `train_test/games_clean.csv`.
 * The training and testing datasets are located in the `train-test` directory.
 
 ## Results

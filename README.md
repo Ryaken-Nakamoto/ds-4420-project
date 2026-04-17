@@ -16,6 +16,15 @@ Note that for both of these models, it is only possible to predict the very next
 
 We employ two different models to predict point differentials. A Bayesian Linear Regression using a Gaussian posterior/prior, and an MLP. For the Bayesian model, we use consistent hyperparameters of a mean of zero and a standard deviation of one. Both models take in the same input data. The MLP model consists of an input layer of size 6 and two hidden layers of size 64 and 16 with ReLU activation functions. The weights are initialized from a normal distribution with He initialization, in order to prevent gradient divergence. The MLP is trained on only the rolling performance differentials, as the home/away columns caused the model to overfit.
 
+## Directory
+
+* The full project implementation is located in the `basketball` directory. All files and directories listed below are in `basketball`.
+* The Bayesian Linear Regression model implementation and results are located in `bayesian.Rmd`.
+* The Multilayer Perceptron (MLP) model implementation and results are located in `nba_mlp.ipynb`.
+* The data cleaning and preprocessing pipeline is located in `cleaning_data.ipynb`.
+* The cleaned dataset is located in `games.csv`.
+* The training and testing datasets are located in the `train-test` directory.
+
 ## Results
 
 The Bayesian linear regression model had, on average, 90% of the inferences within 95% of the distribution. This implies that there exists high variance within the games, which we are not accounting for. Furthermore, the posterior standard deviation is 13, meaning there is relative low confidence in the output of the model. Most games in the NBA lie within the 13 point differential.
